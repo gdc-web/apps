@@ -16306,48 +16306,62 @@ cr.plugins_.Button = function(runtime)
         this.runtime = plugin.runtime;
     };
     var typeProto = pluginProto.Type.prototype;
-    typeProto.onCreate = function() {
-    };
+    typeProto.onCreate = function() {};
     pluginProto.Instance = function(type) {
         this.type = type;
         this.runtime = type.runtime;
     };
     var instanceProto = pluginProto.Instance.prototype;
-instanceProto.onCreate = function() {
-    var self = this;
-    this.debug_status = "Waiting..."; // Создай в C2 переменную или выводи это в текст
-    var check = setInterval(function() {
-        if (typeof window.Telegram !== "undefined") {
-            if (window.Telegram.WebApp) {
-                self.tg = window.Telegram.WebApp;
-                self.tg.ready();
-                self.tg.expand();
-                self.debug_status = "OK!";
-                clearInterval(check);
-            } else {
-                self.debug_status = "Telegram exists, but no WebApp";
-            }
-        } else {
-            self.debug_status = "Window.Telegram is UNDEFINED";
+    instanceProto.onCreate = function() {
+        this.tg = (typeof window.Telegram !== "undefined") ? window.Telegram.WebApp : null;
+        var self = this;
+        if (this.tg) {
+            this.tg.ready();
+            this.tg.MainButton.onClick(function() {
+                self.runtime.trigger(cr.plugins_.TGWebApp.prototype.cnds.OnMainButtonClick, self);
+            });
         }
-    }, 200);
-    setTimeout(function() { clearInterval(check); }, 10000);
-};
+    };
     function Acts() {};
     Acts.prototype.Expand = function () {
         if (this.tg) this.tg.expand();
     };
+    Acts.prototype.HapticImpact = function (style) {
+        if (this.tg && this.tg.HapticFeedback) {
+            this.tg.HapticFeedback.impactOccurred(style);
+        }
+    };
+    Acts.prototype.HapticNotification = function (type) {
+        if (this.tg && this.tg.HapticFeedback) {
+            this.tg.HapticFeedback.notificationOccurred(type);
+        }
+    };
+    Acts.prototype.SetMainButtonText = function (text) {
+        if (this.tg && this.tg.MainButton) {
+            this.tg.MainButton.setText(text);
+        }
+    };
+    Acts.prototype.ShowMainButton = function () {
+        if (this.tg && this.tg.MainButton) {
+            this.tg.MainButton.show();
+        }
+    };
+    Acts.prototype.HideMainButton = function () {
+        if (this.tg && this.tg.MainButton) {
+            this.tg.MainButton.hide();
+        }
+    };
     pluginProto.acts = new Acts();
+    function Cnds() {};
+    Cnds.prototype.OnMainButtonClick = function () {
+        return true;
+    };
+    pluginProto.cnds = new Cnds();
     function Exps() {};
-Exps.prototype.UserID = function (ret) {
-    if (typeof window.Telegram === "undefined") {
-        ret.set_any("SDK Error"); // Скрипт не загружен в index.html
-    } else if (!this.tg.initDataUnsafe || !this.tg.initDataUnsafe.user) {
-        ret.set_any("No User Data"); // Скрипт есть, но данных нет (запуск не через бота)
-    } else {
-        ret.set_any(this.tg.initDataUnsafe.user.id.toString());
-    }
-};
+    Exps.prototype.UserID = function (ret) {
+        var val = (this.tg && this.tg.initDataUnsafe.user) ? this.tg.initDataUnsafe.user.id : 0;
+        ret.set_any(val.toString());
+    };
     Exps.prototype.Username = function (ret) {
         var val = (this.tg && this.tg.initDataUnsafe.user) ? this.tg.initDataUnsafe.user.username : "";
         ret.set_string(val || "");
@@ -16360,9 +16374,13 @@ Exps.prototype.UserID = function (ret) {
         var val = (this.tg && this.tg.initDataUnsafe.user) ? this.tg.initDataUnsafe.user.last_name : "";
         ret.set_string(val || "");
     };
-Exps.prototype.DebugStatus = function (ret) {
-    ret.set_string(this.debug_status || "None");
-};
+    Exps.prototype.DebugStatus = function (ret) {
+        var status = "Unknown";
+        if (typeof window.Telegram === "undefined") status = "No SDK";
+        else if (!this.tg.initDataUnsafe.user) status = "No User Data";
+        else status = "OK";
+        ret.set_string(status);
+    };
     pluginProto.exps = new Exps();
 }());
 ;
@@ -17002,16 +17020,22 @@ cr.plugins_.Text = function(runtime)
 cr.getObjectRefTable = function () { return [
 	cr.plugins_.Browser,
 	cr.plugins_.Button,
-	cr.plugins_.TGWebApp,
 	cr.plugins_.Text,
+	cr.plugins_.TGWebApp,
 	cr.system_object.prototype.cnds.OnLayoutStart,
 	cr.plugins_.Text.prototype.acts.SetText,
 	cr.plugins_.TGWebApp.prototype.exps.UserID,
 	cr.plugins_.TGWebApp.prototype.exps.Username,
 	cr.plugins_.TGWebApp.prototype.exps.FirstName,
 	cr.plugins_.TGWebApp.prototype.exps.LastName,
-	cr.plugins_.Button.prototype.cnds.OnClicked,
 	cr.system_object.prototype.cnds.EveryTick,
 	cr.plugins_.TGWebApp.prototype.exps.DebugStatus,
-	cr.system_object.prototype.exps.newline
+	cr.plugins_.Button.prototype.cnds.OnClicked,
+	cr.plugins_.TGWebApp.prototype.acts.HapticImpact,
+	cr.plugins_.TGWebApp.prototype.acts.SetMainButtonText,
+	cr.plugins_.TGWebApp.prototype.acts.ShowMainButton,
+	cr.plugins_.TGWebApp.prototype.acts.HideMainButton,
+	cr.plugins_.TGWebApp.prototype.acts.Expand,
+	cr.plugins_.TGWebApp.prototype.acts.HapticNotification,
+	cr.plugins_.TGWebApp.prototype.cnds.OnMainButtonClick
 ];};
